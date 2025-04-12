@@ -98,7 +98,6 @@ function showNotification(message) {
   setTimeout(() => notification.style.display = 'none', 3000);
 }
 
-// ฟังก์ชันใหม่สำหรับโหลดข้อมูลพนักงาน
 function loadEmployees() {
   google.script.run.withSuccessHandler(function(employees) {
     let html = '<ul>';
@@ -113,14 +112,13 @@ function loadEmployees() {
   }).getEmployees();
 }
 
-// ฟังก์ชันสำหรับแสดงตัวอย่างภาพ
 function previewImage(event) {
   const file = event.target.files[0];
   if (file) {
     const reader = new FileReader();
     reader.onload = function(e) {
       google.script.run.withSuccessHandler(url => {
-        document.getElementsByName('photo')[0].value = url; // บันทึก URL ลงในฟอร์ม
+        document.getElementsByName('photo')[0].value = url;
         showNotification('อัปโหลดภาพสำเร็จ!');
       }).withFailureHandler(error => {
         console.error('Error uploading image:', error);
@@ -133,6 +131,5 @@ function previewImage(event) {
   }
 }
 
-// ฟังก์ชันอื่น ๆ (เช่น showAddEmployeeForm, hideAddEmployeeForm) ยังคงเหมือนเดิม
 function showAddEmployeeForm() { document.getElementById('addEmployeeForm').style.display = 'block'; }
 function hideAddEmployeeForm() { document.getElementById('addEmployeeForm').style.display = 'none'; }
