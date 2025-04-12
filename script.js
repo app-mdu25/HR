@@ -98,6 +98,41 @@ function showNotification(message) {
   setTimeout(() => notification.style.display = 'none', 3000);
 }
 
-// ฟังก์ชันอื่น ๆ (ยังไม่สมบูรณ์ในตัวอย่างนี้)
+// ฟังก์ชันใหม่สำหรับโหลดข้อมูลพนักงาน
+function loadEmployees() {
+  google.script.run.withSuccessHandler(function(employees) {
+    let html = '<ul>';
+    employees.forEach(emp => {
+      html += `<li>${emp.name} ${emp.surname} - ${emp.position} (${emp.department})</li>`;
+    });
+    html += '</ul>';
+    document.getElementById('employeeList').innerHTML = html;
+  }).withFailureHandler(error => {
+    console.error('Error loading employees:', error);
+    alert('ไม่สามารถโหลดข้อมูลพนักงาน: ' + error.message);
+  }).getEmployees();
+}
+
+// ฟังก์ชันสำหรับแสดงตัวอย่างภาพ
+function previewImage(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      google.script.run.withSuccessHandler(url => {
+        document.getElementsByName('photo')[0].value = url; // บันทึก URL ลงในฟอร์ม
+        showNotification('อัปโหลดภาพสำเร็จ!');
+      }).withFailureHandler(error => {
+        console.error('Error uploading image:', error);
+        alert('ไม่สามารถอัปโหลดภาพ: ' + error.message);
+      }).saveFile(file);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    alert('กรุณาเลือกไฟล์ภาพ!');
+  }
+}
+
+// ฟังก์ชันอื่น ๆ (เช่น showAddEmployeeForm, hideAddEmployeeForm) ยังคงเหมือนเดิม
 function showAddEmployeeForm() { document.getElementById('addEmployeeForm').style.display = 'block'; }
 function hideAddEmployeeForm() { document.getElementById('addEmployeeForm').style.display = 'none'; }
