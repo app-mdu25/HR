@@ -115,7 +115,7 @@ function loadEmployees() {
 function previewImage(event) {
   const file = event.target.files[0];
   if (file) {
-    // ส่งไฟล์ดิบไปยัง saveFile โดยไม่ต้องใช้ FileReader
+    // ส่ง File object โดยตรงไปยัง saveFile
     google.script.run.withSuccessHandler(url => {
       document.getElementsByName('photo')[0].value = url;
       showNotification('อัปโหลดภาพสำเร็จ!');
