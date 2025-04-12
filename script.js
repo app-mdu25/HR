@@ -115,17 +115,22 @@ function loadEmployees() {
 function previewImage(event) {
   const file = event.target.files[0];
   if (file) {
-    // ส่ง File object โดยตรงไปยัง saveFile
-    google.script.run.withSuccessHandler(url => {
-      document.getElementsByName('photo')[0].value = url;
-      showNotification('อัปโหลดภาพสำเร็จ!');
-    }).withFailureHandler(error => {
-      console.error('Error uploading image:', error);
-      alert('ไม่สามารถอัปโหลดภาพ: ' + error.message);
-    }).saveFile(file);
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const base64String = e.target.result; // ได้เป็น Base64 String
+      google.script.run.withSuccessHandler(url => {
+        document.getElementsByName('photo')[0].value = url;
+        showNotification('อัปโหลดภาพสำเร็จ!');
+      }).withFailureHandler(error => {
+        console.error('Error uploading image:', error);
+        alert('ไม่สามารถอัปโหลดภาพ: ' + error.message);
+      }).saveFile(base64String);
+    };
+    reader.readAsDataURL(file); // อ่านเป็น Base64
   } else {
     alert('กรุณาเลือกไฟล์ภาพ!');
   }
 }
+
 function showAddEmployeeForm() { document.getElementById('addEmployeeForm').style.display = 'block'; }
 function hideAddEmployeeForm() { document.getElementById('addEmployeeForm').style.display = 'none'; }
