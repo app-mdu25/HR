@@ -4,16 +4,25 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
   e.preventDefault();
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
-  google.script.run.withSuccessHandler(user => {
-    if (user) {
+  
+  console.log('Attempting login with:', email, password);
+
+  google.script.run.withSuccessHandler(function(user) {
+    console.log('Login response:', user);
+
+    if (user && user.id && user.role) {
       currentUser = user;
       document.getElementById('login').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
       loadDashboard();
       checkPermissions();
+      showNotification('ล็อกอินสำเร็จ!');
     } else {
-      alert('ล็อกอินไม่สำเร็จ!');
+      alert('ล็อกอินไม่สำเร็จ! กรุณาตรวจสอบอีเมลและรหัสผ่าน');
     }
+  }).withFailureHandler(function(error) {
+    console.error('Login error:', error);
+    alert('เกิดข้อผิดพลาดในการล็อกอิน: ' + error.message);
   }).login(email, password);
 });
 
@@ -22,6 +31,7 @@ function logout() {
   currentUser = null;
   document.getElementById('login').style.display = 'block';
   document.getElementById('dashboard').style.display = 'none';
+  showNotification('ออกจากระบบสำเร็จ!');
 }
 
 function showSection(sectionId) {
@@ -35,6 +45,12 @@ function showSection(sectionId) {
 }
 
 function checkPermissions() {
+  if (!currentUser || !currentUser.role) {
+    alert('ไม่มีสิทธิ์การใช้งาน! โปรดล็อกอินใหม่');
+    logout();
+    return;
+  }
+
   if (currentUser.role !== 'Admin') {
     if (currentUser.role === 'Executive') {
       document.querySelectorAll('.nav-link').forEach(link => {
@@ -45,7 +61,6 @@ function checkPermissions() {
     } else if (currentUser.role === 'HR') {
       // HR สามารถจัดการพนักงานและลงเวลาได้
     } else if (currentUser.role === 'Employee') {
-      // พนักงานทั่วไปเห็นเฉพาะข้อมูลตัวเอง
       document.querySelectorAll('.nav-link').forEach(link => {
         if (!link.textContent.includes('แดชบอร์ด') && !link.textContent.includes('จัดเก็บไฟล์') && !link.textContent.includes('ออกระบบ')) {
           link.style.display = 'none';
@@ -56,6 +71,11 @@ function checkPermissions() {
 }
 
 function loadDashboard() {
+  if (!currentUser) {
+    alert('กรุณาล็อกอินก่อน!');
+    return;
+  }
+
   google.script.run.withSuccessHandler(data => {
     document.getElementById('summaryData').innerHTML = `
       <p>ยอดรวมพนักงาน: ${data.total}</p>
@@ -65,38 +85,19 @@ function loadDashboard() {
       <p>ลา: ${data.leave}</p>
       <p>นอกสถานที่: ${data.offsite}</p>
     `;
+  }).withFailureHandler(error => {
+    console.error('Error loading dashboard:', error);
+    alert('ไม่สามารถโหลดแดชบอร์ด: ' + error.message);
   }).getSummary();
 }
 
-function showAddEmployeeForm() {
-  document.getElementById('addEmployeeForm').style.display = 'block';
+function showNotification(message) {
+  const notification = document.getElementById('notifications');
+  notification.textContent = message;
+  notification.style.display = 'block';
+  setTimeout(() => notification.style.display = 'none', 3000);
 }
 
-function hideAddEmployeeForm() {
-  document.getElementById('addEmployeeForm').style.display = 'none';
-}
-
-document.getElementById('employeeForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  const formData = new FormData(this);
-  google.script.run.withSuccessHandler(() => {
-    alert('บันทึกข้อมูลพนักงานสำเร็จ!');
-    hideAddEmployeeForm();
-    loadEmployees();
-  }).saveEmployee(Object.fromEntries(formData));
-});
-
-function previewImage(event) {
-  const file = event.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      google.script.run.saveFile(file).withSuccessHandler(url => {
-        document.getElementsByName('photo')[0].value = url;
-      });
-    };
-    reader.readAsDataURL(file);
-  }
-}
-
-// ฟังก์ชันอื่นๆ เช่น loadEmployees, loadDepartments, recordAttendance, uploadFile, exportReport สามารถขยายได้ตามความต้องการ
+// ฟังก์ชันอื่น ๆ (ยังไม่สมบูรณ์ในตัวอย่างนี้)
+function showAddEmployeeForm() { document.getElementById('addEmployeeForm').style.display = 'block'; }
+function hideAddEmployeeForm() { document.getElementById('addEmployeeForm').style.display = 'none'; }
