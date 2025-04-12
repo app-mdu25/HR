@@ -117,14 +117,22 @@ function previewImage(event) {
   if (file) {
     const reader = new FileReader();
     reader.onload = function(e) {
-      const base64String = e.target.result.split(',')[1]; // ดึงเฉพาะส่วน Base64 โดยตัดส่วนหัวออก
+      const dataURL = e.target.result; // เก็บข้อมูล Base64 ทั้งหมด รวมส่วนหัว
+      const base64String = dataURL.split(',')[1] || ''; // ดึงส่วน Base64 (ถ้ามี)
+      const mimeType = dataURL.split(',')[0].match(/:(.*?);/)?.[1] || file.type; // ดึง MIME Type จากส่วนหัว
+
+      if (!base64String) {
+        alert('ไม่สามารถแปลงไฟล์เป็น Base64 ได้');
+        return;
+      }
+
       google.script.run.withSuccessHandler(url => {
         document.getElementsByName('photo')[0].value = url;
         showNotification('อัปโหลดภาพสำเร็จ!');
       }).withFailureHandler(error => {
         console.error('Error uploading image:', error);
         alert('ไม่สามารถอัปโหลดภาพ: ' + error.message);
-      }).saveFile(base64String, file.name, file.type); // ส่ง Base64, ชื่อไฟล์, และ MIME Type
+      }).saveFile(base64String, file.name, mimeType);
     };
     reader.readAsDataURL(file); // อ่านไฟล์เป็น Base64
   } else {
