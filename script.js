@@ -332,3 +332,580 @@ new Vue({
       reader.readAsDataURL(file);
     },
     addEmployee() {
+      if (!this.newEmployee.name || !this.newEmployee.position || !this.newEmployee.department) {
+        Swal.fire({
+          icon: 'error',
+          title: 'ข้อผิดพลาด',
+          text: 'กรุณากรอกชื่อ, ตำแหน่ง และแผนกให้ครบถ้วน'
+        });
+        return;
+      }
+      this.isLoading = true;
+      const uploadPhoto = this.fileToUpload.photo;
+      const uploadDocument = this.fileToUpload.document;
+      const employeeData = { ...this.newEmployee };
+      const uploadPromises = [];
+      if (uploadPhoto) {
+        uploadPromises.push(new Promise(resolve => {
+          this.uploadFile(uploadPhoto, url => {
+            employeeData.photo = url || '';
+            resolve();
+          });
+        }));
+      }
+      if (uploadDocument) {
+        uploadPromises.push(new Promise(resolve => {
+          this.uploadFile(uploadDocument, url => {
+            employeeData.documents = url || '';
+            resolve();
+          });
+        }));
+      }
+      Promise.all(uploadPromises).then(() => {
+        google.script.run
+          .withSuccessHandler(result => {
+            this.isLoading = false;
+            if (result.success) {
+              Swal.fire({
+                icon: 'success',
+                title: 'เพิ่มพนักงานสำเร็จ',
+                showConfirmButton: false,
+                timer: 1500
+              });
+              this.loadEmployees();
+              this.resetNewEmployee();
+            } else {
+              Swal.fire({
+                icon: 'error',
+                title: 'ข้อผิดพลาด',
+                text: 'ไม่สามารถเพิ่มพนักงานได้'
+              });
+            }
+          })
+          .withFailureHandler(err => {
+            this.isLoading = false;
+            Swal.fire({
+              icon: 'error',
+              title: 'ข้อผิดพลาด',
+              text: 'เกิดข้อผิดพลาด: ' + err.message
+            });
+          })
+          .addEmployee(employeeData);
+      }).catch(err => {
+        this.isLoading = false;
+        Swal.fire({
+          icon: 'error',
+          title: 'ข้อผิดพลาด',
+          text: 'เกิดข้อผิดพลาดในการอัปโหลดไฟล์: ' + err.message
+        });
+      });
+    },
+    resetNewEmployee() {
+      this.newEmployee = {
+        name: '',
+        position: '',
+        department: '',
+        photo: '',
+        documents: '',
+        preview: '',
+        nickname: '',
+        birthdate: '',
+        address: '',
+        education: '',
+        phone: '',
+        lineId: ''
+      };
+      this.fileToUpload.photo = null;
+      this.fileToUpload.document = null;
+    },
+    startEditEmployee(employee) {
+      this.editingEmployee = { ...employee, preview: employee.photo };
+      this.fileToUpload.editPhoto = null;
+      this.fileToUpload.editDocument = null;
+    },
+    updateEmployee() {
+      if (!this.editingEmployee.name || !this.editingEmployee.position || !this.editingEmployee.department) {
+        Swal.fire({
+          icon: 'error',
+          title: 'ข้อผิดพลาด',
+          text: 'กรุณากรอกชื่อ, ตำแหน่ง และแผนกให้ครบถ้วน'
+        });
+        return;
+      }
+      this.isLoading = true;
+      const uploadPhoto = this.fileToUpload.editPhoto;
+      const uploadDocument = this.fileToUpload.editDocument;
+      const employeeData = { ...this.editingEmployee };
+      const uploadPromises = [];
+      if (uploadPhoto) {
+        uploadPromises.push(new Promise(resolve => {
+          this.uploadFile(uploadPhoto, url => {
+            employeeData.photo = url || employeeData.photo;
+            resolve();
+          });
+        }));
+      }
+      if (uploadDocument) {
+        uploadPromises.push(new Promise(resolve => {
+          this.uploadFile(uploadDocument, url => {
+            employeeData.documents = url || employeeData.documents;
+            resolve();
+          });
+        }));
+      }
+      Promise.all(uploadPromises).then(() => {
+        google.script.run
+          .withSuccessHandler(result => {
+            this.isLoading = false;
+            if (result.success) {
+              Swal.fire({
+                icon: 'success',
+                title: 'แก้ไขพนักงานสำเร็จ',
+                showConfirmButton: false,
+                timer: 1500
+              });
+              this.loadEmployees();
+              this.editingEmployee = null;
+            } else {
+              Swal.fire({
+                icon: 'error',
+                title: 'ข้อผิดพลาด',
+                text: result.message || 'ไม่สามารถแก้ไขพนักงานได้'
+              });
+            }
+          })
+          .withFailureHandler(err => {
+            this.isLoading = false;
+            Swal.fire({
+              icon: 'error',
+              title: 'ข้อผิดพลาด',
+              text: 'เกิดข้อผิดพลาด: ' + err.message
+            });
+          })
+          .updateEmployee(employeeData);
+      }).catch(err => {
+        this.isLoading = false;
+        Swal.fire({
+          icon: 'error',
+          title: 'ข้อผิดพลาด',
+          text: 'เกิดข้อผิดพลาดในการอัปโหลดไฟล์: ' + err.message
+        });
+      });
+    },
+    cancelEdit() {
+      this.editingEmployee = null;
+      this.fileToUpload.editPhoto = null;
+      this.fileToUpload.editDocument = null;
+    },
+    confirmDelete(employee) {
+      this.employeeToDelete = employee;
+    },
+    deleteEmployee(id) {
+      this.isLoading = true;
+      google.script.run
+        .withSuccessHandler(result => {
+          this.isLoading = false;
+          if (result.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'ลบพนักงานสำเร็จ',
+              showConfirmButton: false,
+              timer: 1500
+            });
+            this.loadEmployees();
+            this.employeeToDelete = null;
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'ข้อผิดพลาด',
+              text: result.message || 'ไม่สามารถลบพนักงานได้'
+            });
+          }
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: 'เกิดข้อผิดพลาด: ' + err.message
+          });
+        })
+        .deleteEmployee(id);
+    },
+    addDepartment() {
+      if (!this.newDepartment.name) {
+        Swal.fire({
+          icon: 'error',
+          title: 'ข้อผิดพลาด',
+          text: 'กรุณากรอกชื่อแผนก'
+        });
+        return;
+      }
+      this.isLoading = true;
+      google.script.run
+        .withSuccessHandler(result => {
+          this.isLoading = false;
+          if (result.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'เพิ่มแผนกสำเร็จ',
+              showConfirmButton: false,
+              timer: 1500
+            });
+            this.loadDepartments();
+            this.newDepartment.name = '';
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'ข้อผิดพลาด',
+              text: 'ไม่สามารถเพิ่มแผนกได้'
+            });
+          }
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: 'เกิดข้อผิดพลาด: ' + err.message
+          });
+        })
+        .addDepartment(this.newDepartment);
+    },
+    startEditDepartment(department) {
+      this.editingDepartment = { ...department };
+    },
+    updateDepartment() {
+      if (!this.editingDepartment.name) {
+        Swal.fire({
+          icon: 'error',
+          title: 'ข้อผิดพลาด',
+          text: 'กรุณากรอกชื่อแผนก'
+        });
+        return;
+      }
+      this.isLoading = true;
+      google.script.run
+        .withSuccessHandler(result => {
+          this.isLoading = false;
+          if (result.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'แก้ไขแผนกสำเร็จ',
+              showConfirmButton: false,
+              timer: 1500
+            });
+            this.loadDepartments();
+            this.editingDepartment = null;
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'ข้อผิดพลาด',
+              text: result.message || 'ไม่สามารถแก้ไขแผนกได้'
+            });
+          }
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: 'เกิดข้อผิดพลาด: ' + err.message
+          });
+        })
+        .updateDepartment(this.editingDepartment);
+    },
+    cancelEditDepartment() {
+      this.editingDepartment = null;
+    },
+    confirmDeleteDepartment(department) {
+      this.departmentToDelete = department;
+    },
+    deleteDepartment(id) {
+      this.isLoading = true;
+      google.script.run
+        .withSuccessHandler(result => {
+          this.isLoading = false;
+          if (result.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'ลบแผนกสำเร็จ',
+              showConfirmButton: false,
+              timer: 1500
+            });
+            this.loadDepartments();
+            this.departmentToDelete = null;
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'ข้อผิดพลาด',
+              text: result.message || 'ไม่สามารถลบแผนกได้'
+            });
+          }
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: 'เกิดข้อผิดพลาด: ' + err.message
+          });
+        })
+        .deleteDepartment(id);
+    },
+    addAttendance() {
+      if (!this.newAttendance.employeeId || !this.newAttendance.status || !this.newAttendance.date) {
+        Swal.fire({
+          icon: 'error',
+          title: 'ข้อผิดพลาด',
+          text: 'กรุณากรอกข้อมูลการลงเวลาให้ครบถ้วน'
+        });
+        return;
+      }
+      this.isLoading = true;
+      google.script.run
+        .withSuccessHandler(result => {
+          this.isLoading = false;
+          if (result.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'บันทึกการลงเวลาสำเร็จ',
+              showConfirmButton: false,
+              timer: 1500
+            });
+            this.loadAttendance();
+            this.newAttendance = {
+              employeeId: '',
+              status: '',
+              date: new Date().toISOString().split('T')[0]
+            };
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'ข้อผิดพลาด',
+              text: 'ไม่สามารถบันทึกการลงเวลาได้'
+            });
+          }
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: 'เกิดข้อผิดพลาด: ' + err.message
+          });
+        })
+        .addAttendance(this.newAttendance);
+    },
+    startEditAttendance(attendance) {
+      this.editingAttendance = { ...attendance };
+    },
+    updateAttendance() {
+      if (!this.editingAttendance.employeeId || !this.editingAttendance.status || !this.editingAttendance.date) {
+        Swal.fire({
+          icon: 'error',
+          title: 'ข้อผิดพลาด',
+          text: 'กรุณากรอกข้อมูลการลงเวลาให้ครบถ้วน'
+        });
+        return;
+      }
+      this.isLoading = true;
+      google.script.run
+        .withSuccessHandler(result => {
+          this.isLoading = false;
+          if (result.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'แก้ไขการลงเวลาสำเร็จ',
+              showConfirmButton: false,
+              timer: 1500
+            });
+            this.loadAttendance();
+            this.editingAttendance = null;
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'ข้อผิดพลาด',
+              text: result.message || 'ไม่สามารถแก้ไขการลงเวลาได้'
+            });
+          }
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: 'เกิดข้อผิดพลาด: ' + err.message
+          });
+        })
+        .updateAttendance(this.editingAttendance);
+    },
+    cancelEditAttendance() {
+      this.editingAttendance = null;
+    },
+    confirmDeleteAttendance(attendance) {
+      this.attendanceToDelete = attendance;
+    },
+    deleteAttendance(id) {
+      this.isLoading = true;
+      google.script.run
+        .withSuccessHandler(result => {
+          this.isLoading = false;
+          if (result.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'ลบการลงเวลาสำเร็จ',
+              showConfirmButton: false,
+              timer: 1500
+            });
+            this.loadAttendance();
+            this.attendanceToDelete = null;
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'ข้อผิดพลาด',
+              text: result.message || 'ไม่สามารถลบการลงเวลาได้'
+            });
+          }
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: 'เกิดข้อผิดพลาด: ' + err.message
+          });
+        })
+        .deleteAttendance(id);
+    },
+    addUser() {
+      if (!this.newUser.email || !this.newUser.password) {
+        Swal.fire({
+          icon: 'error',
+          title: 'ข้อผิดพลาด',
+          text: 'กรุณากรอกอีเมลและรหัสผ่าน'
+        });
+        return;
+      }
+      this.isLoading = true;
+      google.script.run
+        .withSuccessHandler(result => {
+          this.isLoading = false;
+          if (result.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'เพิ่มผู้ใช้งานสำเร็จ',
+              showConfirmButton: false,
+              timer: 1500
+            });
+            this.newUser = { email: '', password: '', role: 'employee' };
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'ข้อผิดพลาด',
+              text: 'ไม่สามารถเพิ่มผู้ใช้งานได้'
+            });
+          }
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: 'เกิดข้อผิดพลาด: ' + err.message
+          });
+        })
+        .addUser(this.newUser);
+    },
+    getEmployeeName(employeeId) {
+      const employee = this.employees.find(emp => emp.id === employeeId);
+      return employee ? employee.name : 'ไม่พบพนักงาน';
+    },
+    translateStatus(status) {
+      const statusMap = {
+        present: 'มาทำงาน',
+        absent: 'ขาดงาน',
+        leave: 'ลากิจ',
+        sick: 'ลาป่วย',
+        out: 'นอกหน่วย'
+      };
+      return statusMap[status] || status;
+    },
+    formatDate(date) {
+      if (!date) return '';
+      try {
+        return new Date(date).toLocaleDateString('th-TH', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch {
+        return date;
+      }
+    },
+    renderChart() {
+      if (this.chart) {
+        this.chart.destroy();
+      }
+      const ctx = document.getElementById('statusChart').getContext('2d');
+      this.chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['มาทำงาน', 'ขาดงาน', 'ลากิจ', 'ลาป่วย', 'นอกหน่วย'],
+          datasets: [{
+            label: 'จำนวนพนักงาน',
+            data: [
+              this.dashboardData.present,
+              this.dashboardData.absent,
+              this.dashboardData.leave,
+              this.dashboardData.sick,
+              this.dashboardData.out
+            ],
+            backgroundColor: [
+              'rgba(34, 197, 94, 0.6)',
+              'rgba(239, 68, 68, 0.6)',
+              'rgba(234, 179, 8, 0.6)',
+              'rgba(168, 85, 247, 0.6)',
+              'rgba(59, 130, 246, 0.6)'
+            ],
+            borderColor: [
+              'rgba(34, 197, 94, 1)',
+              'rgba(239, 68, 68, 1)',
+              'rgba(234, 179, 8, 1)',
+              'rgba(168, 85, 247, 1)',
+              'rgba(59, 130, 246, 1)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            }
+          }
+        }
+      });
+    }
+  },
+  mounted() {
+    if (this.isLoggedIn) {
+      this.loadEmployees();
+      this.loadDepartments();
+      this.loadAttendance();
+      if (this.currentPage === 'dashboard') {
+        this.loadDashboard();
+      }
+    }
+  }
+});
