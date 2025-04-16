@@ -896,61 +896,62 @@ new Vue({
       }
     },
     renderChart() {
-      if (this.chart) {
-        this.chart.destroy();
-      }
-      const ctx = document.getElementById('statusChart')?.getContext('2d');
-      if (!ctx) return;
-      this.chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: ['มาทำงาน', 'ขาดงาน', 'ลากิจ', 'ลาป่วย', 'นอกหน่วย'],
-          datasets: [{
-            label: 'จำนวนพนักงาน',
-            data: [
-              this.dashboardData.present,
-              this.dashboardData.absent,
-              this.dashboardData.leave,
-              this.dashboardData.sick,
-              this.dashboardData.out
-            ],
-            backgroundColor: [
-              'rgba(34, 197, 94, 0.6)',
-              'rgba(239, 68, 68, 0.6)',
-              'rgba(234, 179, 8, 0.6)',
-              'rgba(168, 85, 247, 0.6)',
-              'rgba(59, 130, 246, 0.6)'
-            ],
-            borderColor: [
-              'rgba(34, 197, 94, 1)',
-              'rgba(239, 68, 68, 1)',
-              'rgba(234, 179, 8, 1)',
-              'rgba(168, 85, 247, 1)',
-              'rgba(59, 130, 246, 1)'
-            ],
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: {
-                stepSize: 1
-              }
-            }
-          },
-          plugins: {
-            legend: {
-              display: false
-            }
+  if (this.chart) {
+    this.chart.destroy();
+  }
+  const ctx = document.getElementById('statusChart').getContext('2d');
+  // ตรวจสอบว่ามีข้อมูลครบหรือไม่
+  const status = this.dashboardData.status || {};
+  const data = [
+    status.present || 0,
+    status.absent || 0,
+    status.leave || 0,
+    status.sick || 0,
+    status.out || 0
+  ];
+  this.chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['มาทำงาน', 'ขาดงาน', 'ลากิจ', 'ลาป่วย', 'นอกหน่วย'],
+      datasets: [{
+        label: 'จำนวนพนักงาน',
+        data: data,
+        backgroundColor: [
+          'rgba(34, 197, 94, 0.6)',
+          'rgba(239, 68, 68, 0.6)',
+          'rgba(234, 179, 8, 0.6)',
+          'rgba(249, 115, 22, 0.6)',
+          'rgba(168, 85, 247, 0.6)'
+        ],
+        borderColor: [
+          'rgba(34, 197, 94, 1)',
+          'rgba(239, 68, 68, 1)',
+          'rgba(234, 179, 8, 1)',
+          'rgba(249, 115, 22, 1)',
+          'rgba(168, 85, 247, 1)'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1
           }
         }
-      });
+      },
+      plugins: {
+        legend: {
+          display: false
+        }
+      }
     }
-  },
+  });
+},
   mounted() {
     if (this.isLoggedIn) {
       this.loadEmployees();
