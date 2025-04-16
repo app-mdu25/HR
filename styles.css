@@ -77,4 +77,23 @@ body {
     width: 60px;
     height: 60px;
   }
+  .chart-container {
+  position: relative;
+  width: 100%;
+  max-height: 300px; /* จำกัดความสูงสูงสุดของกราฟ */
+  overflow: hidden; /* ป้องกันเนื้อหาล้น */
+}
+
+#statusChart {
+  width: 100% !important; /* บังคับให้กว้างเต็ม container */
+  height: auto !important; /* ปรับความสูงอัตโนมัติ */
+  max-height: 300px; /* จำกัดความสูงของ canvas */
+}
+
+/* ปรับ .card เพื่อให้แน่ใจว่าไม่ยืดเกิน */
+.card {
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  max-width: 100%; /* ป้องกันการล้น */
+}
 }
