@@ -547,60 +547,62 @@ new Vue({
       return classes[status] || 'text-gray-600';
     },
     renderChart() {
-      if (this.chart) {
-        this.chart.destroy();
-      }
-      const ctx = document.getElementById('statusChart').getContext('2d');
-      this.chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: ['มาทำงาน', 'ขาดงาน', 'ลากิจ', 'ลาป่วย', 'นอกหน่วย'],
-          datasets: [{
-            label: 'จำนวนพนักงาน',
-            data: [
-              this.dashboardData.status.present || 0,
-              this.dashboardData.status.absent || 0,
-              this.dashboardData.status.leave || 0,
-              this.dashboardData.status.sick || 0,
-              this.dashboardData.status.out || 0
-            ],
-            backgroundColor: [
-              'rgba(34, 197, 94, 0.6)',
-              'rgba(239, 68, 68, 0.6)',
-              'rgba(234, 179, 8, 0.6)',
-              'rgba(249, 115, 22, 0.6)',
-              'rgba(168, 85, 247, 0.6)'
-            ],
-            borderColor: [
-              'rgba(34, 197, 94, 1)',
-              'rgba(239, 68, 68, 1)',
-              'rgba(234, 179, 8, 1)',
-              'rgba(249, 115, 22, 1)',
-              'rgba(168, 85, 247, 1)'
-            ],
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: {
-                stepSize: 1
-              }
-            }
-          },
-          plugins: {
-            legend: {
-              display: false
-            }
+  if (this.chart) {
+    this.chart.destroy();
+  }
+  const ctx = document.getElementById('statusChart').getContext('2d');
+  const status = this.dashboardData.status || {};
+  const data = [
+    Number(status.present) || 0,
+    Number(status.absent) || 0,
+    Number(status.leave) || 0,
+    Number(status.sick) || 0,
+    Number(status.out) || 0
+  ];
+  this.chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['มาทำงาน', 'ขาดงาน', 'ลากิจ', 'ลาป่วย', 'นอกหน่วย'],
+      datasets: [{
+        label: 'จำนวนพนักงาน',
+        data: data,
+        backgroundColor: [
+          'rgba(34, 197, 94, 0.6)',
+          'rgba(239, 68, 68, 0.6)',
+          'rgba(234, 179, 8, 0.6)',
+          'rgba(249, 115, 22, 0.6)',
+          'rgba(168, 85, 247, 0.6)'
+        ],
+        borderColor: [
+          'rgba(34, 197, 94, 1)',
+          'rgba(239, 68, 68, 1)',
+          'rgba(234, 179, 8, 1)',
+          'rgba(249, 115, 22, 1)',
+          'rgba(168, 85, 247, 1)'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true, // เปลี่ยนเป็น true เพื่อรักษาสัดส่วน
+      aspectRatio: 2, // กำหนดสัดส่วนกว้าง:สูง (2:1)
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1
           }
         }
-      });
+      },
+      plugins: {
+        legend: {
+          display: false
+        }
+      }
     }
-  },
+  });
+},
   mounted() {
     if (this.isLoggedIn && this.currentPage === 'dashboard') {
       this.loadDashboard();
