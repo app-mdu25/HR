@@ -900,14 +900,13 @@ new Vue({
     this.chart.destroy();
   }
   const ctx = document.getElementById('statusChart').getContext('2d');
-  // ตรวจสอบว่ามีข้อมูลครบหรือไม่
   const status = this.dashboardData.status || {};
   const data = [
-    status.present || 0,
-    status.absent || 0,
-    status.leave || 0,
-    status.sick || 0,
-    status.out || 0
+    Number(status.present) || 0,
+    Number(status.absent) || 0,
+    Number(status.leave) || 0,
+    Number(status.sick) || 0,
+    Number(status.out) || 0
   ];
   this.chart = new Chart(ctx, {
     type: 'bar',
@@ -935,7 +934,8 @@ new Vue({
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false,
+      maintainAspectRatio: true, // เปลี่ยนเป็น true เพื่อรักษาสัดส่วน
+      aspectRatio: 2, // กำหนดสัดส่วนกว้าง:สูง (2:1)
       scales: {
         y: {
           beginAtZero: true,
