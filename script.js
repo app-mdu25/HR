@@ -1,144 +1,334 @@
-let currentUser = null;
-
-document.getElementById('loginForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  
-  console.log('Attempting login with:', email, password);
-
-  google.script.run.withSuccessHandler(function(user) {
-    console.log('Login response:', user);
-
-    if (user && user.id && user.role) {
-      currentUser = user;
-      document.getElementById('login').style.display = 'none';
-      document.getElementById('dashboard').style.display = 'block';
-      loadDashboard();
-      checkPermissions();
-      showNotification('ล็อกอินสำเร็จ!');
-    } else {
-      alert('ล็อกอินไม่สำเร็จ! กรุณาตรวจสอบอีเมลและรหัสผ่าน');
+new Vue({
+  el: '#app',
+  data: {
+    isLoggedIn: false,
+    email: '',
+    password: '',
+    userRole: '',
+    currentPage: 'dashboard',
+    isSidebarOpen: false,
+    errorMessage: '',
+    isAttendanceLoaded: false,
+    isLoading: false,
+    dashboardData: { 
+      totalEmployees: 0, 
+      present: 0, 
+      absent: 0, 
+      leave: 0, 
+      sick: 0, 
+      out: 0, 
+      absentEmployees: [], 
+      status: {} 
+    },
+    employees: [],
+    departments: [],
+    attendanceRecords: [],
+    newEmployee: { 
+      name: '', 
+      position: '', 
+      department: '', 
+      photo: '', 
+      documents: '', 
+      preview: '',
+      nickname: '',
+      birthdate: '',
+      address: '',
+      education: '',
+      phone: '',
+      lineId: ''
+    },
+    editingEmployee: null,
+    employeeToDelete: null,
+    newDepartment: {
+      name: ''
+    },
+    editingDepartment: null,
+    departmentToDelete: null,
+    newAttendance: {
+      employeeId: '',
+      status: '',
+      date: new Date().toISOString().split('T')[0]
+    },
+    editingAttendance: null,
+    attendanceToDelete: null,
+    employeeSearchQuery: '',
+    searchQuery: '',
+    attendanceSearchQuery: '',
+    newUser: { 
+      email: '', 
+      password: '', 
+      role: 'employee' 
+    },
+    chart: null,
+    fileToUpload: { 
+      photo: null, 
+      document: null, 
+      editPhoto: null, 
+      editDocument: null 
     }
-  }).withFailureHandler(function(error) {
-    console.error('Login error:', error);
-    alert('เกิดข้อผิดพลาดในการล็อกอิน: ' + error.message);
-  }).login(email, password);
-});
-
-function logout() {
-  google.script.run.logout();
-  currentUser = null;
-  document.getElementById('login').style.display = 'block';
-  document.getElementById('dashboard').style.display = 'none';
-  showNotification('ออกจากระบบสำเร็จ!');
-}
-
-function showSection(sectionId) {
-  document.querySelectorAll('.section').forEach(section => section.style.display = 'none');
-  document.getElementById(sectionId).style.display = 'block';
-  if (sectionId === 'summary') loadDashboard();
-  else if (sectionId === 'employees') loadEmployees();
-  else if (sectionId === 'departments') loadDepartments();
-  else if (sectionId === 'attendance') loadAttendance();
-  else if (sectionId === 'files') loadFiles();
-}
-
-function checkPermissions() {
-  if (!currentUser || !currentUser.role) {
-    alert('ไม่มีสิทธิ์การใช้งาน! โปรดล็อกอินใหม่');
-    logout();
-    return;
-  }
-
-  if (currentUser.role !== 'Admin') {
-    if (currentUser.role === 'Executive') {
-      document.querySelectorAll('.nav-link').forEach(link => {
-        if (link.textContent.includes('จัดการพนักงาน') || link.textContent.includes('จัดการแผนก') || link.textContent.includes('ลงเวลา') || link.textContent.includes('จัดเก็บไฟล์') || link.textContent.includes('Export รายงาน')) {
-          link.style.display = 'none';
-        }
-      });
-    } else if (currentUser.role === 'HR') {
-      // HR สามารถจัดการพนักงานและลงเวลาได้
-    } else if (currentUser.role === 'Employee') {
-      document.querySelectorAll('.nav-link').forEach(link => {
-        if (!link.textContent.includes('แดชบอร์ด') && !link.textContent.includes('จัดเก็บไฟล์') && !link.textContent.includes('ออกระบบ')) {
-          link.style.display = 'none';
-        }
-      });
-    }
-  }
-}
-
-function loadDashboard() {
-  if (!currentUser) {
-    alert('กรุณาล็อกอินก่อน!');
-    return;
-  }
-
-  google.script.run.withSuccessHandler(data => {
-    document.getElementById('summaryData').innerHTML = `
-      <p>ยอดรวมพนักงาน: ${data.total}</p>
-      <p>มาทำงาน: ${data.present}</p>
-      <p>ขาด: ${data.absent}</p>
-      <p>ป่วย: ${data.sick}</p>
-      <p>ลา: ${data.leave}</p>
-      <p>นอกสถานที่: ${data.offsite}</p>
-    `;
-  }).withFailureHandler(error => {
-    console.error('Error loading dashboard:', error);
-    alert('ไม่สามารถโหลดแดชบอร์ด: ' + error.message);
-  }).getSummary();
-}
-
-function showNotification(message) {
-  const notification = document.getElementById('notifications');
-  notification.textContent = message;
-  notification.style.display = 'block';
-  setTimeout(() => notification.style.display = 'none', 3000);
-}
-
-function loadEmployees() {
-  google.script.run.withSuccessHandler(function(employees) {
-    let html = '<ul>';
-    employees.forEach(emp => {
-      html += `<li>${emp.name} ${emp.surname} - ${emp.position} (${emp.department})</li>`;
-    });
-    html += '</ul>';
-    document.getElementById('employeeList').innerHTML = html;
-  }).withFailureHandler(error => {
-    console.error('Error loading employees:', error);
-    alert('ไม่สามารถโหลดข้อมูลพนักงาน: ' + error.message);
-  }).getEmployees();
-}
-
-function previewImage(event) {
-  const file = event.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const dataURL = e.target.result; // เก็บข้อมูล Base64 ทั้งหมด รวมส่วนหัว
-      const base64String = dataURL.split(',')[1] || ''; // ดึงส่วน Base64 (ถ้ามี)
-      const mimeType = dataURL.split(',')[0].match(/:(.*?);/)?.[1] || file.type; // ดึง MIME Type จากส่วนหัว
-
-      if (!base64String) {
-        alert('ไม่สามารถแปลงไฟล์เป็น Base64 ได้');
-        return;
+  },
+  computed: {
+    filteredEmployees() {
+      const query = this.currentPage === 'manage' ? this.employeeSearchQuery : this.searchQuery;
+      return this.employees.filter(emp =>
+        emp.name.toLowerCase().includes(query.toLowerCase()) ||
+        emp.position.toLowerCase().includes(query.toLowerCase()) ||
+        emp.department.toLowerCase().includes(query.toLowerCase()) ||
+        (emp.nickname || '').toLowerCase().includes(query.toLowerCase()) ||
+        (emp.phone || '').toLowerCase().includes(query.toLowerCase())
+      );
+    },
+    filteredAttendance() {
+      if (!Array.isArray(this.attendanceRecords)) {
+        return [];
       }
-
-      google.script.run.withSuccessHandler(url => {
-        document.getElementsByName('photo')[0].value = url;
-        showNotification('อัปโหลดภาพสำเร็จ!');
-      }).withFailureHandler(error => {
-        console.error('Error uploading image:', error);
-        alert('ไม่สามารถอัปโหลดภาพ: ' + error.message);
-      }).saveFile(base64String, file.name, mimeType);
-    };
-    reader.readAsDataURL(file); // อ่านไฟล์เป็น Base64
-  } else {
-    alert('กรุณาเลือกไฟล์ภาพ!');
-  }
-}
-
-function showAddEmployeeForm() { document.getElementById('addEmployeeForm').style.display = 'block'; }
-function hideAddEmployeeForm() { document.getElementById('addEmployeeForm').style.display = 'none'; }
+      return this.attendanceRecords.filter(record => {
+        const employeeName = this.getEmployeeName(record.employeeId) || '';
+        const status = this.translateStatus(record.status) || '';
+        const date = this.formatDate(record.date) || '';
+        const query = (this.attendanceSearchQuery || '').toLowerCase();
+        return (
+          employeeName.toLowerCase().includes(query) ||
+          status.toLowerCase().includes(query) ||
+          date.toLowerCase().includes(query)
+        );
+      });
+    }
+  },
+  methods: {
+    toggleSidebar() {
+      this.isSidebarOpen = !this.isSidebarOpen;
+    },
+    changePage(page) {
+      if (this.chart && this.currentPage === 'dashboard' && page !== 'dashboard') {
+        this.chart.destroy();
+        this.chart = null;
+      }
+      this.currentPage = page;
+      this.isSidebarOpen = false;
+      if (page === 'dashboard') {
+        this.loadDashboard();
+      } else if (page === 'departments') {
+        this.loadDepartments();
+      } else if (page === 'attendance') {
+        this.isAttendanceLoaded = false;
+        this.loadAttendance();
+      }
+    },
+    login() {
+      this.isLoading = true;
+      google.script.run
+        .withSuccessHandler(result => {
+          this.isLoading = false;
+          if (result.success) {
+            this.isLoggedIn = true;
+            this.userRole = result.role;
+            this.errorMessage = '';
+            Swal.fire({
+              icon: 'success',
+              title: 'เข้าสู่ระบบสำเร็จ',
+              showConfirmButton: false,
+              timer: 1500
+            });
+            this.loadEmployees();
+            this.loadDepartments();
+            this.loadAttendance();
+            if (this.currentPage === 'dashboard') {
+              this.loadDashboard();
+            }
+          } else {
+            this.errorMessage = result.message + ' กรุณาตรวจสอบอีเมลและรหัสผ่าน';
+            Swal.fire({
+              icon: 'error',
+              title: 'เข้าสู่ระบบล้มเหลว',
+              text: this.errorMessage
+            });
+          }
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          this.errorMessage = 'เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message;
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: this.errorMessage
+          });
+        })
+        .login(this.email, this.password);
+    },
+    logout() {
+      if (this.chart) {
+        this.chart.destroy();
+        this.chart = null;
+      }
+      this.isLoggedIn = false;
+      this.email = '';
+      this.password = '';
+      this.userRole = '';
+      this.currentPage = 'dashboard';
+      this.errorMessage = '';
+      this.isAttendanceLoaded = false;
+      Swal.fire({
+        icon: 'success',
+        title: 'ออกจากระบบสำเร็จ',
+        showConfirmButton: false,
+        timer: 1500
+      });
+    },
+    loadDashboard() {
+      this.isLoading = true;
+      google.script.run
+        .withSuccessHandler(data => {
+          this.isLoading = false;
+          this.dashboardData = data;
+          if (this.currentPage === 'dashboard') {
+            this.$nextTick(() => {
+              this.renderChart();
+            });
+          }
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          this.errorMessage = 'เกิดข้อผิดพลาดในการโหลดข้อมูลแดชบอร์ด: ' + err.message;
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: this.errorMessage
+          });
+        })
+        .getDashboardData();
+    },
+    loadEmployees() {
+      this.isLoading = true;
+      google.script.run
+        .withSuccessHandler(data => {
+          this.isLoading = false;
+          this.employees = data;
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          this.errorMessage = 'เกิดข้อผิดพลาดในการโหลดข้อมูลพนักงาน: ' + err.message;
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: this.errorMessage
+          });
+        })
+        .getEmployees();
+    },
+    loadDepartments() {
+      this.isLoading = true;
+      google.script.run
+        .withSuccessHandler(data => {
+          this.isLoading = false;
+          this.departments = data;
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          this.errorMessage = 'เกิดข้อผิดพลาดในการโหลดข้อมูลแผนก: ' + err.message;
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: this.errorMessage
+          });
+        })
+        .getDepartments();
+    },
+    loadAttendance() {
+      if (this.employees.length === 0) {
+        google.script.run
+          .withSuccessHandler(data => {
+            this.employees = data;
+            this.fetchAttendanceRecords();
+          })
+          .withFailureHandler(err => {
+            this.isLoading = false;
+            this.errorMessage = 'เกิดข้อผิดพลาดในการโหลดข้อมูลพนักงาน: ' + err.message;
+            this.isAttendanceLoaded = true;
+            Swal.fire({
+              icon: 'error',
+              title: 'ข้อผิดพลาด',
+              text: this.errorMessage
+            });
+          })
+          .getEmployees();
+      } else {
+        this.fetchAttendanceRecords();
+      }
+    },
+    fetchAttendanceRecords() {
+      this.isLoading = true;
+      google.script.run
+        .withSuccessHandler(data => {
+          this.isLoading = false;
+          this.attendanceRecords = Array.isArray(data) ? data : [];
+          this.isAttendanceLoaded = true;
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          this.errorMessage = 'เกิดข้อผิดพลาดในการโหลดข้อมูลการลงเวลา: ' + err.message;
+          this.attendanceRecords = [];
+          this.isAttendanceLoaded = true;
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: this.errorMessage
+          });
+        })
+        .getAttendance();
+    },
+    handleFileUpload(event, type) {
+      const file = event.target.files[0];
+      if (!file) return;
+      this.fileToUpload[type] = file;
+      if (type === 'photo' || type === 'editPhoto') {
+        const reader = new FileReader();
+        reader.onload = e => {
+          if (type === 'photo') {
+            this.newEmployee.preview = e.target.result;
+          } else {
+            this.editingEmployee.preview = e.target.result;
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    },
+    handleImageError(employee) {
+      console.log('Image load error for employee:', employee.id, 'URL:', employee.photo);
+      employee.photo = '';
+    },
+    uploadFile(file, callback) {
+      if (!file) return callback(null);
+      this.isLoading = true;
+      const reader = new FileReader();
+      reader.onload = () => {
+        google.script.run
+          .withSuccessHandler(result => {
+            this.isLoading = false;
+            if (result.success) {
+              callback(result.fileUrl);
+            } else {
+              this.errorMessage = 'เกิดข้อผิดพลาดในการอัปโหลดไฟล์';
+              Swal.fire({
+                icon: 'error',
+                title: 'ข้อผิดพลาด',
+                text: this.errorMessage
+              });
+              callback(null);
+            }
+          })
+          .withFailureHandler(err => {
+            this.isLoading = false;
+            this.errorMessage = 'เกิดข้อผิดพลาดในการอัปโหลดไฟล์: ' + err.message;
+            Swal.fire({
+              icon: 'error',
+              title: 'ข้อผิดพลาด',
+              text: this.errorMessage
+            });
+            callback(null);
+          })
+          .uploadFile(file.name, reader.result.split(',')[1], file.type);
+      };
+      reader.readAsDataURL(file);
+    },
+    addEmployee() {
